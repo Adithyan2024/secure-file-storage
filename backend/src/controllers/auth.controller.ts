@@ -15,7 +15,7 @@ const REFRESH_COOKIE_NAME = 'refreshToken';
 const refreshCookieOptions: CookieOptions = {
   httpOnly: true, // not readable by JS -> mitigates XSS token theft
   secure: env.isProduction, // HTTPS only in prod; allow http in local dev
-  sameSite: 'strict', // mitigates CSRF for this cookie
+  sameSite: 'none', // mitigates CSRF for this cookie
   path: '/api/auth', // only sent to auth endpoints (refresh/logout)
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
