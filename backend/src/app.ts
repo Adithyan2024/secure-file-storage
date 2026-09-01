@@ -8,6 +8,7 @@ import { env } from './config/env';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import authRoutes from './routes/auth.routes';
 import { fileRouter, publicFileRouter } from './routes/file.routes';
+import { folderRouter } from './routes/folder.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -35,6 +36,7 @@ export function createApp(): Express {
 
   app.use('/api/auth', authRoutes);
   app.use('/api/files', fileRouter);
+  app.use('/api/folders', folderRouter);
   app.use('/api/public/files', publicFileRouter);
 
   app.use(notFoundHandler);

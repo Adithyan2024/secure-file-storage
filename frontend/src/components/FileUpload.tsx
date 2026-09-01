@@ -13,7 +13,7 @@ interface UploadEntry {
   error?: string;
 }
 
-export function FileUpload({ onUploaded }: { onUploaded: () => void }) {
+export function FileUpload({ folderId, onUploaded }: { folderId: string | null; onUploaded: () => void }) {
   const [isDragActive, setIsDragActive] = useState(false);
   const [entries, setEntries] = useState<UploadEntry[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +37,7 @@ export function FileUpload({ onUploaded }: { onUploaded: () => void }) {
     setEntries((prev) => [...prev, { id, name: file.name, progress: 0 }]);
 
     try {
-      await uploadFileRequest(file, (percent) => {
+      await uploadFileRequest(file, folderId, (percent) => {
         setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, progress: percent } : e)));
       });
       // Give the user a moment to see 100% before the row disappears.

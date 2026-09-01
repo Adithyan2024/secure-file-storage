@@ -38,4 +38,27 @@ router.post('/refresh', authRateLimiter, authController.refresh);
 router.post('/logout', authController.logout);
 router.get('/me', requireAuth, authController.me);
 
+router.patch(
+  '/password',
+  requireAuth,
+  [
+    body('currentPassword').notEmpty().withMessage('Current password is required'),
+    body('newPassword')
+      .isLength({ min: 8 })
+      .withMessage('New password must be at least 8 characters')
+      .matches(/\d/)
+      .withMessage('New password must contain at least one number'),
+  ],
+  validate,
+  authController.changePassword
+);
+
+router.patch(
+  '/settings',
+  requireAuth,
+  [body('defaultVisibility').optional().isIn(['private', 'public'])],
+  validate,
+  authController.updateSettings
+);
+
 export default router;

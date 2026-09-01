@@ -2,6 +2,8 @@ import axios from 'axios';
 import { apiClient } from './axios';
 import { getAccessToken } from './tokenStore';
 
+export type FileView = 'all' | 'private' | 'shared' | 'trash';
+
 export interface FileItem {
   id: string;
   originalName: string;
@@ -9,21 +11,34 @@ export interface FileItem {
   size: number;
   isPublic: boolean;
   downloadCount: number;
+  folderId: string | null;
+  isTrashed: boolean;
+  trashedAt: string | null;
   createdAt: string;
   shareUrl: string | null;
 }
 
-export async function listFilesRequest(): Promise<FileItem[]> {
-  const res = await apiClient.get<{ files: FileItem[] }>('/files');
+export interface StorageStats {
+  usedBytes: number;
+  fileCount: number;
+  quotaBytes: number;
+}
+
+export async function listFilesRequest(view: FileView, folderId: string | null): Promise<FileItem[]> {
+  const params: Record<string, string> = { view };
+  if (folderId) params.folderId = folderId;
+  const res = await apiClient.get<{ files: FileItem[] }>('/files', { params });
   return res.data.files;
 }
 
 export async function uploadFileRequest(
   file: File,
+  folderId: string | null,
   onProgress: (percent: number) => void
 ): Promise<FileItem> {
   const form = new FormData();
   form.append('file', file);
+  if (folderId) form.append('folderId', folderId);
 
   const res = await apiClient.post<{ file: FileItem }>('/files/upload', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -39,8 +54,28 @@ export async function setVisibilityRequest(id: string, isPublic: boolean): Promi
   return res.data.file;
 }
 
-export async function deleteFileRequest(id: string): Promise<void> {
+export async function moveFileRequest(id: string, folderId: string | null): Promise<FileItem> {
+  const res = await apiClient.patch<{ file: FileItem }>(`/files/${id}/move`, { folderId });
+  return res.data.file;
+}
+
+export async function trashFileRequest(id: string): Promise<FileItem> {
+  const res = await apiClient.patch<{ file: FileItem }>(`/files/${id}/trash`);
+  return res.data.file;
+}
+
+export async function restoreFileRequest(id: string): Promise<FileItem> {
+  const res = await apiClient.patch<{ file: FileItem }>(`/files/${id}/restore`);
+  return res.data.file;
+}
+
+export async function permanentlyDeleteFileRequest(id: string): Promise<void> {
   await apiClient.delete(`/files/${id}`);
+}
+
+export async function getStorageRequest(): Promise<StorageStats> {
+  const res = await apiClient.get<StorageStats>('/files/storage');
+  return res.data;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
@@ -48,9 +83,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000
 /**
  * Owner downloads need the Authorization header, which a plain <a href>
  * can't attach - so we fetch as a blob and trigger a client-side download.
- * Fine for this use case; a true streaming-to-disk download for huge files
- * would use the browser's native download via a short-lived signed URL
- * instead (noted as a future improvement in the README).
  */
 export async function downloadOwnFile(file: FileItem): Promise<void> {
   const token = getAccessToken();

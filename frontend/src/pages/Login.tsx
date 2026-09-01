@@ -17,7 +17,7 @@ export function Login() {
     setIsSubmitting(true);
     try {
       await login(email, password);
-      navigate('/');
+      navigate('/app');
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {

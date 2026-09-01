@@ -15,7 +15,7 @@ const REFRESH_COOKIE_NAME = 'refreshToken';
 const refreshCookieOptions: CookieOptions = {
   httpOnly: true, // not readable by JS -> mitigates XSS token theft
   secure: env.isProduction, // HTTPS only in prod; allow http in local dev
-  sameSite: 'none', // mitigates CSRF for this cookie
+  sameSite: 'strict', // mitigates CSRF for this cookie
   path: '/api/auth', // only sent to auth endpoints (refresh/logout)
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
@@ -98,5 +98,43 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
 export const me = asyncHandler(async (req: Request, res: Response) => {
   const user = await User.findById(req.user!.id).exec();
   if (!user) throw ApiError.notFound('User not found');
+  res.status(200).json({ user: user.toJSON() });
+});
+
+export const changePassword = asyncHandler(async (req: Request, res: Response) => {
+  const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string };
+
+  const user = await User.findById(req.user!.id).select('+passwordHash').exec();
+  if (!user) throw ApiError.notFound('User not found');
+
+  const valid = await user.comparePassword(currentPassword);
+  if (!valid) throw ApiError.unauthorized('Current password is incorrect');
+
+  user.passwordHash = await hashPassword(newPassword);
+  // Bump refresh-token version so every other logged-in session (browser,
+  // device) is invalidated - standard practice after a password change.
+  user.refreshTokenVersion += 1;
+  await user.save();
+
+  // Re-issue tokens for the current session so the user isn't logged out
+  // by their own password change.
+  const accessToken = issueTokens(res, {
+    id: user._id.toString(),
+    email: user.email,
+    refreshTokenVersion: user.refreshTokenVersion,
+  });
+
+  res.status(200).json({ accessToken });
+});
+
+export const updateSettings = asyncHandler(async (req: Request, res: Response) => {
+  const { defaultVisibility } = req.body as { defaultVisibility?: 'private' | 'public' };
+
+  const user = await User.findById(req.user!.id).exec();
+  if (!user) throw ApiError.notFound('User not found');
+
+  if (defaultVisibility) user.defaultVisibility = defaultVisibility;
+  await user.save();
+
   res.status(200).json({ user: user.toJSON() });
 });

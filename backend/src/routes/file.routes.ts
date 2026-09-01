@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import * as fileController from '../controllers/file.controller';
 import { requireAuth } from '../middleware/auth';
 import { upload } from '../middleware/upload';
@@ -11,15 +11,38 @@ export const fileRouter = Router();
 fileRouter.use(requireAuth, apiRateLimiter);
 
 fileRouter.post('/upload', upload.single('file'), fileController.uploadFile);
-fileRouter.get('/', fileController.listFiles);
+
+fileRouter.get(
+  '/',
+  [
+    query('view').optional().isIn(['all', 'private', 'shared', 'trash']),
+    query('folderId').optional().isMongoId(),
+  ],
+  validate,
+  fileController.listFiles
+);
+
+fileRouter.get('/storage', fileController.getStorage);
+
 fileRouter.get('/:id/download', [param('id').isMongoId()], validate, fileController.downloadOwnFile);
+
 fileRouter.patch(
   '/:id/visibility',
   [param('id').isMongoId(), body('isPublic').isBoolean()],
   validate,
   fileController.updateVisibility
 );
-fileRouter.delete('/:id', [param('id').isMongoId()], validate, fileController.removeFile);
+
+fileRouter.patch(
+  '/:id/move',
+  [param('id').isMongoId(), body('folderId').optional({ nullable: true }).isMongoId()],
+  validate,
+  fileController.moveFile
+);
+
+fileRouter.patch('/:id/trash', [param('id').isMongoId()], validate, fileController.trashFileHandler);
+fileRouter.patch('/:id/restore', [param('id').isMongoId()], validate, fileController.restoreFileHandler);
+fileRouter.delete('/:id', [param('id').isMongoId()], validate, fileController.permanentlyDeleteFileHandler);
 
 // Public routes: /api/public/files/* - intentionally NOT behind requireAuth.
 export const publicFileRouter = Router();

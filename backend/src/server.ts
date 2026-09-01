@@ -1,4 +1,3 @@
-/// <reference path="./types/express.d.ts" />
 import { createApp } from './app';
 import { connectDB } from './config/db';
 import { env } from './config/env';
