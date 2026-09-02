@@ -42,7 +42,10 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
 
-    const isAuthEndpoint = original?.url?.includes('/auth/login') || original?.url?.includes('/auth/register');
+   const isAuthEndpoint =
+  original?.url?.includes('/auth/login') ||
+  original?.url?.includes('/auth/register') ||
+  original?.url?.includes('/auth/refresh');
 
     if (error.response?.status === 401 && original && !original._retry && !isAuthEndpoint) {
       original._retry = true;

@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { extractErrorMessage } from '../api/axios';
+import { PasswordInput } from '../components/PasswordInput';
 
 export function Register() {
   const { register } = useAuth();
@@ -54,9 +55,8 @@ export function Register() {
 
           <div className="field">
             <label htmlFor="password">Password</label>
-            <input
+            <PasswordInput
               id="password"
-              type="password"
               autoComplete="new-password"
               required
               minLength={8}

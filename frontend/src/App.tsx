@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { UploadProvider } from './context/UploadContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
 import { FilesView } from './components/FilesView';
@@ -45,7 +46,9 @@ export default function App() {
             path="/app"
             element={
               <ProtectedRoute>
-                <AppLayout />
+                <UploadProvider>
+                  <AppLayout />
+                </UploadProvider>
               </ProtectedRoute>
             }
           >

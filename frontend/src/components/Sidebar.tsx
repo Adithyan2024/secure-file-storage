@@ -2,8 +2,8 @@ import { useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useUploads } from '../context/UploadContext';
 import { extractErrorMessage } from '../api/axios';
-import { uploadFileRequest } from '../api/files';
 import { createFolderRequest } from '../api/folders';
 import {
   BrandMark,
@@ -23,16 +23,10 @@ const NAV_ITEMS = [
   { to: '/app/trash', label: 'Trash', icon: TrashIcon, exact: false },
 ];
 
-/** Fires when uploads/folder-creates happen from the sidebar, so whichever
- * file list is currently mounted knows to refetch without complex prop/context
- * plumbing between two sibling routes. */
-export function notifyFilesChanged() {
-  window.dispatchEvent(new Event('vault:files-changed'));
-}
-
 export function Sidebar() {
   const { user, logout } = useAuth();
   const { showToast } = useToast();
+  const { startUpload } = useUploads();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -48,17 +42,12 @@ export function Sidebar() {
     navigate('/login');
   }
 
-  async function handleFilesSelected(fileList: FileList | null) {
+  function handleFilesSelected(fileList: FileList | null) {
     setMenuOpen(false);
     if (!fileList || fileList.length === 0) return;
     for (const file of Array.from(fileList)) {
-      try {
-        await uploadFileRequest(file, currentFolderId, () => {});
-      } catch (err) {
-        showToast(extractErrorMessage(err));
-      }
+      startUpload(file, currentFolderId);
     }
-    notifyFilesChanged();
     if (!isMyFiles) navigate('/app');
   }
 
@@ -68,7 +57,7 @@ export function Sidebar() {
     if (!name || !name.trim()) return;
     try {
       await createFolderRequest(name.trim(), currentFolderId);
-      notifyFilesChanged();
+      window.dispatchEvent(new Event('vault:files-changed'));
       if (!isMyFiles) navigate('/app');
     } catch (err) {
       showToast(extractErrorMessage(err));

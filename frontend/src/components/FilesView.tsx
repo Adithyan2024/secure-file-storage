@@ -12,11 +12,11 @@ import {
   trashFileRequest,
 } from '../api/files';
 import { extractErrorMessage } from '../api/axios';
-import { FileUpload } from './FileUpload';
 import { FileCard, FileListRow } from './FileCard';
 import { FileDetailDrawer } from './FileDetailDrawer';
 import { useToast } from '../context/ToastContext';
-import { FolderIcon, GridIcon, ListIcon } from './icons';
+import { useUploads } from '../context/UploadContext';
+import { EmptyFolderIllustration, FolderIcon, GridIcon, ListIcon } from './icons';
 
 const VIEW_COPY: Record<ViewName, { title: string; subtitle: string }> = {
   all: { title: 'My Files', subtitle: "Everything you've uploaded, organized into folders." },
@@ -41,7 +41,9 @@ export function FilesView({ view }: { view: ViewName }) {
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>(getViewMode());
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
   const { showToast } = useToast();
+  const { startUpload } = useUploads();
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -163,11 +165,31 @@ export function FilesView({ view }: { view: ViewName }) {
     }
   }
 
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragActive(false);
+    if (view !== 'all') return;
+    const droppedFiles = e.dataTransfer.files;
+    if (!droppedFiles || droppedFiles.length === 0) return;
+    for (const file of Array.from(droppedFiles)) {
+      startUpload(file, folderId);
+    }
+  }
+
   const copy = VIEW_COPY[view];
   const isEmpty = !isLoading && files.length === 0 && folders.length === 0;
 
   return (
-    <div>
+    <div
+      onDragOver={(e) => {
+        if (view !== 'all') return;
+        e.preventDefault();
+        setIsDragActive(true);
+      }}
+      onDragLeave={() => setIsDragActive(false)}
+      onDrop={handleDrop}
+      className={isDragActive ? 'drag-active' : ''}
+    >
       <div className="content-header">
         <div>
           <h1>{copy.title}</h1>
@@ -183,33 +205,43 @@ export function FilesView({ view }: { view: ViewName }) {
         </div>
       </div>
 
-      {view === 'all' && (
-        <>
-          <FileUpload folderId={folderId} onUploaded={load} />
-          {folderPath.length > 0 && (
-            <div className="breadcrumbs">
-              <button onClick={() => goToBreadcrumb(-1)}>My Files</button>
-              {folderPath.map((f, i) => (
-                <span key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span>/</span>
-                  {i === folderPath.length - 1 ? (
-                    <span className="current">{f.name}</span>
-                  ) : (
-                    <button onClick={() => goToBreadcrumb(i)}>{f.name}</button>
-                  )}
-                </span>
-              ))}
-            </div>
-          )}
-        </>
+      {view === 'all' && folderPath.length > 0 && (
+        <div className="breadcrumbs">
+          <button onClick={() => goToBreadcrumb(-1)}>My Files</button>
+          {folderPath.map((f, i) => (
+            <span key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>/</span>
+              {i === folderPath.length - 1 ? (
+                <span className="current">{f.name}</span>
+              ) : (
+                <button onClick={() => goToBreadcrumb(i)}>{f.name}</button>
+              )}
+            </span>
+          ))}
+        </div>
       )}
 
       {isLoading ? (
         <div className="empty-state">Loading…</div>
       ) : isEmpty ? (
-        <div className="empty-state">
-          <h3>{view === 'trash' ? 'Trash is empty' : view === 'all' ? 'This folder is empty' : `No ${view} files yet`}</h3>
-          <div>{view === 'all' ? 'Upload a file or create a folder to get started.' : ''}</div>
+        <div className="empty-state-minimal">
+          <div className="empty-state-badge">
+            <EmptyFolderIllustration />
+          </div>
+          <h3>
+            {view === 'trash'
+              ? 'Trash is empty'
+              : view === 'all'
+                ? 'Nothing here yet'
+                : `No ${view} files yet`}
+          </h3>
+          <p>
+            {view === 'all'
+              ? "Drag and drop files anywhere, or use + New in the sidebar."
+              : view === 'trash'
+                ? 'Deleted files will show up here.'
+                : 'Files you mark this way will show up here.'}
+          </p>
         </div>
       ) : viewMode === 'grid' ? (
         <div className="vault-grid">

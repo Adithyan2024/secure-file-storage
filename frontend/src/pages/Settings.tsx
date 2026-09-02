@@ -5,6 +5,7 @@ import { extractErrorMessage } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { formatBytes } from '../utils/format';
+import { PasswordInput } from '../components/PasswordInput';
 
 export function Settings() {
   const { user, refreshUser, setSessionToken } = useAuth();
@@ -130,9 +131,8 @@ export function Settings() {
                 )}
                 <div className="field">
                   <label htmlFor="currentPassword">Current password</label>
-                  <input
+                  <PasswordInput
                     id="currentPassword"
-                    type="password"
                     required
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
@@ -140,9 +140,8 @@ export function Settings() {
                 </div>
                 <div className="field">
                   <label htmlFor="newPassword">New password</label>
-                  <input
+                  <PasswordInput
                     id="newPassword"
-                    type="password"
                     required
                     minLength={8}
                     value={newPassword}

@@ -34,7 +34,8 @@ export async function listFilesRequest(view: FileView, folderId: string | null):
 export async function uploadFileRequest(
   file: File,
   folderId: string | null,
-  onProgress: (percent: number) => void
+  onProgress: (percent: number) => void,
+  signal?: AbortSignal
 ): Promise<FileItem> {
   const form = new FormData();
   form.append('file', file);
@@ -45,6 +46,7 @@ export async function uploadFileRequest(
     onUploadProgress: (evt) => {
       if (evt.total) onProgress(Math.round((evt.loaded / evt.total) * 100));
     },
+    signal,
   });
   return res.data.file;
 }
