@@ -42,6 +42,7 @@ export function FilesView({ view }: { view: ViewName }) {
   const [viewMode, setViewMode] = useState<ViewMode>(getViewMode());
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const { showToast } = useToast();
   const { startUpload } = useUploads();
 
@@ -165,6 +166,53 @@ export function FilesView({ view }: { view: ViewName }) {
     }
   }
 
+  async function handleDeleteAllHere() {
+    if (files.length === 0) return;
+    if (!window.confirm(`Move all ${files.length} file${files.length === 1 ? '' : 's'} here to trash?`)) return;
+    setIsBulkProcessing(true);
+    try {
+      const results = await Promise.allSettled(files.map((f) => trashFileRequest(f.id)));
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      load();
+      showToast(failed > 0 ? `Moved to trash, but ${failed} failed` : 'All files moved to trash');
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  }
+
+  async function handleRestoreAll() {
+    if (files.length === 0) return;
+    if (!window.confirm(`Restore all ${files.length} file${files.length === 1 ? '' : 's'} from trash?`)) return;
+    setIsBulkProcessing(true);
+    try {
+      const results = await Promise.allSettled(files.map((f) => restoreFileRequest(f.id)));
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      load();
+      showToast(failed > 0 ? `Restored, but ${failed} failed` : 'All files restored');
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  }
+
+  async function handleEmptyTrash() {
+    if (files.length === 0) return;
+    if (
+      !window.confirm(
+        `Permanently delete all ${files.length} file${files.length === 1 ? '' : 's'} in trash? This can't be undone.`
+      )
+    )
+      return;
+    setIsBulkProcessing(true);
+    try {
+      const results = await Promise.allSettled(files.map((f) => permanentlyDeleteFileRequest(f.id)));
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      load();
+      showToast(failed > 0 ? `Trash emptied, but ${failed} failed` : 'Trash emptied');
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  }
+
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setIsDragActive(false);
@@ -195,13 +243,30 @@ export function FilesView({ view }: { view: ViewName }) {
           <h1>{copy.title}</h1>
           <p>{copy.subtitle}</p>
         </div>
-        <div className="view-toggle">
-          <button className={viewMode === 'grid' ? 'active' : ''} onClick={() => changeViewMode('grid')} title="Grid view">
-            <GridIcon />
-          </button>
-          <button className={viewMode === 'list' ? 'active' : ''} onClick={() => changeViewMode('list')} title="List view">
-            <ListIcon />
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {view === 'all' && files.length > 0 && (
+            <button className="btn" onClick={handleDeleteAllHere} disabled={isBulkProcessing}>
+              Delete all
+            </button>
+          )}
+          {view === 'trash' && files.length > 0 && (
+            <>
+              <button className="btn" onClick={handleRestoreAll} disabled={isBulkProcessing}>
+                Recover all
+              </button>
+              <button className="btn btn-danger" onClick={handleEmptyTrash} disabled={isBulkProcessing}>
+                Empty trash
+              </button>
+            </>
+          )}
+          <div className="view-toggle">
+            <button className={viewMode === 'grid' ? 'active' : ''} onClick={() => changeViewMode('grid')} title="Grid view">
+              <GridIcon />
+            </button>
+            <button className={viewMode === 'list' ? 'active' : ''} onClick={() => changeViewMode('list')} title="List view">
+              <ListIcon />
+            </button>
+          </div>
         </div>
       </div>
 
